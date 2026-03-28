@@ -3,9 +3,84 @@ import gspread
 from google.oauth2.service_account import Credentials
 from streamlit_autorefresh import st_autorefresh
 
+# ── Page Config ───────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="KLGCC Outing 🎳",
+    page_icon="🎳",
+    layout="centered"
+)
+
 st_autorefresh(interval=5000, key="sync_refresh")
 
 RESET_PASSWORD = "admin123"  # Change this to your preferred password
+
+# ── Mobile-friendly CSS ───────────────────────────────────────────────────────
+st.markdown("""
+    <style>
+        /* Larger base font */
+        html, body, [class*="css"] {
+            font-size: 16px !important;
+        }
+
+        /* Bigger checkbox tap targets */
+        input[type="checkbox"] {
+            width: 22px !important;
+            height: 22px !important;
+            cursor: pointer;
+        }
+
+        /* Item text easier to read */
+        .item-label {
+            font-size: 15px;
+            line-height: 1.5;
+            padding: 4px 0;
+        }
+
+        /* Sticky payment banner at bottom */
+        .payment-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #1a73e8;
+            color: white;
+            text-align: center;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Add bottom padding so sticky banner doesn't cover content */
+        .main > div {
+            padding-bottom: 70px;
+        }
+
+        /* Make buttons bigger on mobile */
+        .stButton > button {
+            height: 52px !important;
+            font-size: 16px !important;
+            border-radius: 10px !important;
+        }
+
+        /* Tighten up columns on small screens */
+        [data-testid="column"] {
+            padding: 2px !important;
+        }
+
+        /* Input field larger */
+        .stTextInput input {
+            font-size: 16px !important;
+            height: 48px !important;
+        }
+    </style>
+
+    <!-- Sticky payment banner -->
+    <div class="payment-banner">
+        💳 Pay via TNG or DuitNow → <span style="letter-spacing:1px;">0125118233</span>
+    </div>
+""", unsafe_allow_html=True)
 
 # ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -54,11 +129,11 @@ KLGCC_BOWLING = [
     {
         "id": f"bw_{i:02d}",
         "item": f"Bowling Package ({i}) — Shoe Rental + 2 Games",
-        "total": round(3.24 + 2 * 11.57, 2)  # RM 26.38 per person
+        "total": round(3.24 + 2 * 11.57, 2)
     }
     for i in range(1, 12)
 ]
-BOWLING_TOTAL = round(11 * 26.38, 2)  # RM 290.18
+BOWLING_TOTAL = round(11 * 26.38, 2)
 
 ALL_ITEMS = BIG_LEAF + ABADI + KLGCC_BOWLING
 
@@ -70,7 +145,7 @@ def get_sheet():
         st.secrets["gcp_service_account"],
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"  # required by gspread
+            "https://www.googleapis.com/auth/drive"
         ]
     )
     client = gspread.authorize(creds)
@@ -103,58 +178,63 @@ if "show_reset_prompt" not in st.session_state:
 # ── Renderer ──────────────────────────────────────────────────────────────────
 
 def render_receipt(title, items, grand_total, claimed):
-    st.subheader(title)
-    st.caption(f"Grand Total: RM {grand_total:.2f}")
+    claimed_count = sum(1 for i in items if i["id"] in claimed)
+    all_done = claimed_count == len(items)
+    status = "✅ All claimed" if all_done else f"{claimed_count}/{len(items)} claimed"
 
-    running = 0.0
-    for item in items:
-        iid = item["id"]
-        claimer = claimed.get(iid)
-        col1, col2, col3 = st.columns([0.08, 0.62, 0.30])
+    with st.expander(f"{title} — RM {grand_total:.2f}  |  {status}", expanded=True):
+        running = 0.0
+        for item in items:
+            iid = item["id"]
+            claimer = claimed.get(iid)
 
-        if claimer:
-            with col1:
-                st.checkbox("", value=True, disabled=True, key=f"chk_{iid}")
-            with col2:
-                st.markdown(f"~~{item['item']}~~ — *{claimer}*")
-            with col3:
-                st.markdown(f"RM {item['total']:.2f}")
-        else:
-            checked = iid in st.session_state.pending
-            with col1:
-                ticked = st.checkbox("", value=checked, key=f"chk_{iid}")
-            with col2:
-                st.markdown(item["item"])
-            with col3:
-                st.markdown(f"RM {item['total']:.2f}")
-            if ticked:
-                st.session_state.pending.add(iid)
-                running += item["total"]
+            if claimer:
+                col1, col2 = st.columns([0.08, 0.92])
+                with col1:
+                    st.checkbox("", value=True, disabled=True, key=f"chk_{iid}")
+                with col2:
+                    st.markdown(
+                        f"<div class='item-label' style='color:gray;'>"
+                        f"<s>{item['item']}</s> &nbsp;·&nbsp; "
+                        f"<em>{claimer}</em> &nbsp;·&nbsp; RM {item['total']:.2f}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
             else:
-                st.session_state.pending.discard(iid)
+                checked = iid in st.session_state.pending
+                col1, col2 = st.columns([0.08, 0.92])
+                with col1:
+                    ticked = st.checkbox("", value=checked, key=f"chk_{iid}")
+                with col2:
+                    st.markdown(
+                        f"<div class='item-label'>"
+                        f"{item['item']} &nbsp;·&nbsp; RM {item['total']:.2f}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                if ticked:
+                    st.session_state.pending.add(iid)
+                    running += item["total"]
+                else:
+                    st.session_state.pending.discard(iid)
 
-    return running
+        return running
 
 # ── Main UI ───────────────────────────────────────────────────────────────────
 
-st.title("🎳KLGCC Outing")
-st.markdown("Select your items across all receipts, enter your name, then tap **Submit**.")
-st.info("💳 Please pay via **TNG or DuitNow** to **0125118233**")
+st.title("🎳 KLGCC Outing")
+st.caption("Tap your items, enter your name, then hit Submit.")
 
 name = st.text_input("Your name", placeholder="e.g. Ali")
 
 claimed = load_claimed()
 
-st.divider()
 total  = render_receipt("🍽️ Big Leaf", BIG_LEAF, 250.20, claimed)
-st.divider()
 total += render_receipt("☕ Abadi Cafeteria", ABADI, 34.10, claimed)
-st.divider()
 total += render_receipt("🎳 Bowling — KLGCC", KLGCC_BOWLING, BOWLING_TOTAL, claimed)
-st.divider()
 
 if total > 0:
-    st.success(f"**Your current selection: RM {total:.2f}**")
+    st.success(f"**Your selection: RM {total:.2f}**")
 
 # ── Submit & Reset ────────────────────────────────────────────────────────────
 
@@ -163,27 +243,27 @@ col_submit, col_reset = st.columns(2)
 with col_submit:
     if st.button("✅ Submit", use_container_width=True, type="primary"):
         if not name.strip():
-            st.error("Please enter your name before submitting.")
+            st.error("Please enter your name.")
         elif not st.session_state.pending:
             st.error("Please select at least one item.")
         else:
             save_claimed(st.session_state.pending, name.strip())
             st.session_state.pending.clear()
-            st.success(f"Claimed by **{name.strip()}**! Total: RM {total:.2f} — please pay via TNG or DuitNow to 0125118233")
+            st.success(f"✅ Done, **{name.strip()}**! Pay RM {total:.2f} via TNG/DuitNow to 0125118233")
             st.rerun()
 
 with col_reset:
-    if st.button("🔄 Reset All (Admin)", use_container_width=True):
+    if st.button("🔄 Reset (Admin)", use_container_width=True):
         st.session_state.show_reset_prompt = True
 
 if st.session_state.show_reset_prompt:
-    pwd = st.text_input("Enter admin password:", type="password", key="reset_pwd")
+    pwd = st.text_input("Admin password:", type="password", key="reset_pwd")
     if st.button("Confirm Reset"):
         if pwd == RESET_PASSWORD:
             reset_all()
             st.session_state.pending.clear()
             st.session_state.show_reset_prompt = False
-            st.success("All claims have been reset.")
+            st.success("All claims reset.")
             st.rerun()
         else:
             st.error("Incorrect password.")
@@ -202,7 +282,14 @@ if claimed:
     for person, amt in sorted(summary.items()):
         st.markdown(f"- **{person}**: RM {amt:.2f}")
 
-    total_claimed = sum(summary.values())
+    st.markdown(f"**Total Claimed: RM {sum(summary.values()):.2f}**")
+```
 
-    # Only show total claimed, no unclaimed amount shown
-    st.markdown(f"**Total Claimed: RM {total_claimed:.2f}**")
+---
+
+And your `requirements.txt`:
+```
+streamlit
+gspread
+google-auth
+streamlit-autorefresh
