@@ -17,23 +17,23 @@ RESET_PASSWORD = "admin123"  # Change this to your preferred password
 # ── Mobile-friendly CSS ───────────────────────────────────────────────────────
 st.markdown("""
     <style>
-        /* Larger base font */
         html, body, [class*="css"] {
             font-size: 16px !important;
         }
 
-        /* Bigger checkbox tap targets */
-        input[type="checkbox"] {
-            width: 22px !important;
-            height: 22px !important;
-            cursor: pointer;
+        /* Make checkbox label text larger and easier to tap */
+        .stCheckbox label {
+            font-size: 15px !important;
+            line-height: 1.6 !important;
+            align-items: flex-start !important;
         }
 
-        /* Item text easier to read */
-        .item-label {
-            font-size: 15px;
-            line-height: 1.5;
-            padding: 4px 0;
+        /* Bigger checkbox box */
+        .stCheckbox input[type="checkbox"] {
+            width: 22px !important;
+            height: 22px !important;
+            margin-top: 2px !important;
+            cursor: pointer;
         }
 
         /* Make buttons bigger on mobile */
@@ -41,11 +41,6 @@ st.markdown("""
             height: 52px !important;
             font-size: 16px !important;
             border-radius: 10px !important;
-        }
-
-        /* Tighten up columns on small screens */
-        [data-testid="column"] {
-            padding: 2px !important;
         }
 
         /* Input field larger */
@@ -163,29 +158,28 @@ def render_receipt(title, items, grand_total, claimed):
             claimer = claimed.get(iid)
 
             if claimer:
-                col1, col2 = st.columns([0.08, 0.92])
-                with col1:
-                    st.checkbox("", value=True, disabled=True, key=f"chk_{iid}")
-                with col2:
-                    st.markdown(
-                        f"<div class='item-label' style='color:gray;'>"
-                        f"<s>{item['item']}</s> &nbsp;·&nbsp; "
-                        f"<em>{claimer}</em> &nbsp;·&nbsp; RM {item['total']:.2f}"
-                        f"</div>",
-                        unsafe_allow_html=True
-                    )
+                # Claimed — inline HTML so it never stacks on mobile
+                st.markdown(
+                    f"""
+                    <div style='display:flex; align-items:center; padding:6px 0;
+                                border-bottom:1px solid #f0f0f0; color:gray;'>
+                        <span style='font-size:20px; margin-right:10px;'>☑️</span>
+                        <span style='flex:1; font-size:14px;'>
+                            <s>{item['item']}</s><br>
+                            <small><em>{claimer}</em> · RM {item['total']:.2f}</small>
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
+                # Unclaimed — native checkbox with label (always inline on all devices)
                 checked = iid in st.session_state.pending
-                col1, col2 = st.columns([0.08, 0.92])
-                with col1:
-                    ticked = st.checkbox("", value=checked, key=f"chk_{iid}")
-                with col2:
-                    st.markdown(
-                        f"<div class='item-label'>"
-                        f"{item['item']} &nbsp;·&nbsp; RM {item['total']:.2f}"
-                        f"</div>",
-                        unsafe_allow_html=True
-                    )
+                ticked = st.checkbox(
+                    f"{item['item']}  ·  RM {item['total']:.2f}",
+                    value=checked,
+                    key=f"chk_{iid}"
+                )
                 if ticked:
                     st.session_state.pending.add(iid)
                     running += item["total"]
