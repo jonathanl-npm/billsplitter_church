@@ -68,7 +68,8 @@ ALL_ITEMS = BIG_LEAF + ABADI + KLGCC_BOWLING
 def get_sheet():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        scopes=["https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"]
     )
     client = gspread.authorize(creds)
     return client.open("BillSplitter").sheet1
