@@ -283,13 +283,3 @@ if claimed:
         st.markdown(f"- **{person}**: RM {amt:.2f}")
 
     st.markdown(f"**Total Claimed: RM {sum(summary.values()):.2f}**")
-```
-
----
-
-And your `requirements.txt`:
-```
-streamlit
-gspread
-google-auth
-streamlit-autorefresh
