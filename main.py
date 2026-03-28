@@ -3,7 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from streamlit_autorefresh import st_autorefresh
 
-st_autorefresh(interval=10000, key="sync_refresh")
+st_autorefresh(interval=5000, key="sync_refresh")
 
 RESET_PASSWORD = "admin123"  # Change this to your preferred password
 
@@ -68,8 +68,10 @@ ALL_ITEMS = BIG_LEAF + ABADI + KLGCC_BOWLING
 def get_sheet():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"]
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"  # required by gspread
+        ]
     )
     client = gspread.authorize(creds)
     return client.open("BillSplitter").sheet1
@@ -135,8 +137,9 @@ def render_receipt(title, items, grand_total, claimed):
 
 # ── Main UI ───────────────────────────────────────────────────────────────────
 
-st.title("🎳KLGCC Outing")
+st.title("🎳 Bill Splitter — KLGCC Outing")
 st.markdown("Select your items across all receipts, enter your name, then tap **Submit**.")
+st.info("💳 Please pay via **TNG or DuitNow** to **0125118233**")
 
 name = st.text_input("Your name", placeholder="e.g. Ali")
 
@@ -166,7 +169,7 @@ with col_submit:
         else:
             save_claimed(st.session_state.pending, name.strip())
             st.session_state.pending.clear()
-            st.success(f"Claimed by **{name.strip()}**! Total: RM {total:.2f}")
+            st.success(f"Claimed by **{name.strip()}**! Total: RM {total:.2f} — please pay via TNG or DuitNow to 0125118233")
             st.rerun()
 
 with col_reset:
@@ -200,11 +203,6 @@ if claimed:
         st.markdown(f"- **{person}**: RM {amt:.2f}")
 
     total_claimed = sum(summary.values())
-    grand_total   = 250.20 + 34.10 + BOWLING_TOTAL
-    unclaimed     = grand_total - total_claimed
 
-    st.markdown(f"**Total Claimed: RM {total_claimed:.2f} / RM {grand_total:.2f}**")
-    if unclaimed > 0.01:
-        st.warning(f"⚠️ RM {unclaimed:.2f} still unclaimed")
-    else:
-        st.success("✅ All items claimed!")
+    # Only show total claimed, no unclaimed amount shown
+    st.markdown(f"**Total Claimed: RM {total_claimed:.2f}**")
