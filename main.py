@@ -249,5 +249,3 @@ if claimed:
 
     for person, amt in sorted(summary.items()):
         st.markdown(f"- **{person}**: RM {amt:.2f}")
-
-    st.markdown(f"**Total Claimed: RM {sum(summary.values()):.2f}**")
