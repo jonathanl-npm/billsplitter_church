@@ -137,7 +137,7 @@ def render_receipt(title, items, grand_total, claimed):
 
 # ── Main UI ───────────────────────────────────────────────────────────────────
 
-st.title("🎳 Bill Splitter — KLGCC Outing")
+st.title("🎳KLGCC Outing")
 st.markdown("Select your items across all receipts, enter your name, then tap **Submit**.")
 st.info("💳 Please pay via **TNG or DuitNow** to **0125118233**")
 
